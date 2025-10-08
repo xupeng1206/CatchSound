@@ -153,6 +153,7 @@ class SoundScanner:
         for k in self.info_required:
             infos[k] = file_info.get(k, "")
         infos["tags"] = tags
+        print(f"✅ 文件路径: {str(file_path)}")
         return infos
     
     def _fetch_static_info(self, file_path: Path, root_path: Path):

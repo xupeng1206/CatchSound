@@ -14,10 +14,7 @@ def clean_sound():
 def rescan():
     fs_gen = sound_scanner.scan(OPENDAL_FS_ROOT)
     batch_rows = []
-    counter = 0
     for row in fs_gen:
-        counter += 1
-        print(f"✅ 文件计数: {counter} 文件路径: {row['rel_path']}")
         batch_rows.append(row)
         if len(batch_rows) > 100000:
             db_sound.batch_insert(batch_rows)
