@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  catchsound_api:
+    # build:
+    #   context: ../api
+    #   dockerfile: Dockerfile
+    image: catchsound_api:0.0.1
+    container_name: catchsound_api
+    # command: tail -f
+    command: python -m flask run --host 0.0.0.0 --port 4321
+    ports:
+      - "4321:4321"
+    volumes:
+      # 挂载音频文件目录（根据实际情况调整路径）
+      - /path/to/audio/folder:/data:ro
+      # 挂载数据库文件目录（持久化数据）
+      - ./data:/app/data
+    restart: always
+
+  # 前端服务
+  catchsound_web:
+    # build:
+    #   context: ../web
+    #   dockerfile: Dockerfile
+    image: catchsound_web:0.0.1
+    container_name: catchsound_web
+    ports:
+      - "4536:80"
+    depends_on:
+      - catchsound_api
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
