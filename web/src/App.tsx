@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import FileBrowser from './components/FileBrowser';
 import AudioList from './components/AudioList';
@@ -10,6 +10,32 @@ function App() {
   const [selectedFilePath, setSelectedFilePath] = useState<string>('');
   const [isLocateOperation, setIsLocateOperation] = useState(false);
   const [stopAudioListPlayback, setStopAudioListPlayback] = useState<(() => void) | null>(null);
+  const [fileBrowserWidth, setFileBrowserWidth] = useState<number | undefined>(undefined);
+
+  // 加载保存的文件浏览器宽度
+  useEffect(() => {
+    try {
+      const savedWidth = localStorage.getItem('fileBrowser_width');
+      if (savedWidth) {
+        const width = parseInt(savedWidth, 10);
+        if (!isNaN(width) && width >= 280) {
+          setFileBrowserWidth(width);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load file browser width:', error);
+    }
+  }, []);
+
+  // 保存文件浏览器宽度
+  const handleWidthChange = (width: number) => {
+    setFileBrowserWidth(width);
+    try {
+      localStorage.setItem('fileBrowser_width', width.toString());
+    } catch (error) {
+      console.warn('Failed to save file browser width:', error);
+    }
+  };
 
   const handleFileSelect = (file: AudioFile) => {
     setSelectedFile(file);
@@ -94,6 +120,8 @@ function App() {
         onFileSelect={handleBrowserFileSelect}
         selectedFilePath={selectedFilePath}
         isLocateOperation={isLocateOperation}
+        width={fileBrowserWidth}
+        onWidthChange={handleWidthChange}
       />
 
     </div>

@@ -186,6 +186,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   const fileTreeRef = useRef<HTMLDivElement>(null);
   const savedScrollPositionRef = useRef<number>(0);
   const [isInternalSelection, setIsInternalSelection] = useState(false);
+  const fileItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   // 拖拽相关状态
   const [draggedItem, setDraggedItem] = useState<FileBrowserItem | null>(null);
@@ -195,7 +196,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   useEffect(() => {
     if (width == null) {
       try {
-        const w = Math.max(280, Math.min(window.innerWidth * 0.5, 800));
+        const w = Math.max(280, Math.min(window.innerWidth * 0.5, window.innerWidth * 0.8));
         setLocalWidth(Math.round(w));
       } catch {}
     }
@@ -277,6 +278,37 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
       return item.subs.some(subItem => findItemByPath(subItem, targetPath));
     }
     return false;
+  };
+
+  // 滚动到指定文件
+  const scrollToFile = (filePath: string, center: boolean = true) => {
+    const fileElement = fileItemRefs.current.get(filePath);
+    if (fileElement && fileTreeRef.current) {
+      const container = fileTreeRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const fileRect = fileElement.getBoundingClientRect();
+      
+      // 计算文件元素相对于容器的位置
+      const fileTop = fileRect.top - containerRect.top + container.scrollTop;
+      const fileHeight = fileRect.height;
+      const containerHeight = containerRect.height;
+      
+      let scrollTop;
+      if (center) {
+        // 居中显示
+        scrollTop = fileTop - (containerHeight / 2) + (fileHeight / 2);
+      } else {
+        // 让文件显示在容器顶部附近，但不要太靠上
+        const offset = 100; // 距离顶部100px的偏移
+        scrollTop = fileTop - offset;
+      }
+      
+      // 平滑滚动到目标位置
+      container.scrollTo({
+        top: Math.max(0, scrollTop),
+        behavior: 'smooth'
+      });
+    }
   };
 
   const loadFolderContents = async (path: string) => {
@@ -396,6 +428,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         }
         // 通知父组件定位完成，可以重置定位状态
         onFileSelect(targetFile);
+        
+        // 延迟滚动到目标文件，确保DOM已经更新
+        setTimeout(() => {
+          scrollToFile(filePath);
+        }, 100);
       }
     } catch (error) {
       console.error('Failed to locate file:', error);
@@ -437,14 +474,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         if (!item.subs) {
           console.log('FileBrowser: Loading folder contents');
           await loadFolderContents(item.path);
-        } else {
-          // 如果已有内容，直接恢复滚动位置
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              restoreScrollPosition();
-            }, 50);
-          });
         }
+        
+        // 目录展开时不滚动，保持目录在原位置，直接向下展开内容
       }
     } else {
       // 选择文件
@@ -461,6 +493,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
     setIsInternalSelection(true);
     // 同步更新 selectedFilePath
       onFileSelect(item);
+    
+    // 平滑滚动到选中的文件
+    setTimeout(() => {
+      scrollToFile(item.path, true);
+    }, 50);
     
     // 如果是音频文件，加载并播放
     if (item.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i)) {
@@ -761,6 +798,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
     return (
       <div key={item.path}>
         <div
+          ref={(el) => {
+            if (el) {
+              fileItemRefs.current.set(item.path, el);
+            }
+          }}
           className={cn(
             "flex items-center py-1 px-2 cursor-pointer hover:bg-accent rounded-sm",
             "transition-colors duration-150",
@@ -849,25 +891,41 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
           )}
           {/* 拖拽调节宽度句柄 */}
           <div
-            className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent"
+            className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors group"
             onMouseDown={(e) => {
               e.preventDefault();
+              e.stopPropagation();
+              
               const startX = e.clientX;
               const startW = (width ?? localWidth);
+              
+              // 添加拖拽时的视觉反馈
+              document.body.style.cursor = 'col-resize';
+              document.body.style.userSelect = 'none';
+              
               const onMove = (ev: MouseEvent) => {
+                ev.preventDefault();
                 const dx = ev.clientX - startX;
                 let next = startW + dx;
-                next = Math.max(280, Math.min(next, Math.max(640, window.innerWidth * 0.9)));
+                // 设置最小宽度280px，最大宽度为屏幕宽度的90%
+                next = Math.max(280, Math.min(next, window.innerWidth * 0.9));
+                
                 if (onWidthChange) {
                   onWidthChange(Math.round(next));
                 } else {
                   setLocalWidth(Math.round(next));
                 }
               };
+              
               const onUp = () => {
+                // 恢复默认样式
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                
                 window.removeEventListener('mousemove', onMove);
                 window.removeEventListener('mouseup', onUp);
               };
+              
               window.addEventListener('mousemove', onMove);
               window.addEventListener('mouseup', onUp);
             }}
