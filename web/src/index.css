@@ -103,7 +103,7 @@
 
   /* 自定义音量滑块样式 */
   .volume-slider {
-    @apply w-12 h-1 bg-secondary rounded-lg appearance-none cursor-pointer;
+    @apply w-20 h-1 bg-secondary rounded-lg appearance-none cursor-pointer;
     background: linear-gradient(to right, #4f46e5 0%, #4f46e5 var(--volume-percent, 70%), #e5e7eb var(--volume-percent, 70%), #e5e7eb 100%);
   }
   

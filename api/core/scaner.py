@@ -87,29 +87,125 @@ class SoundScanner:
                         self.minor_chords.add(name)
         self.all_chords = self.major_chords | self.minor_chords
         self.nice_tags = set([
-            'grime', 'blues', 'electronic', 'clap', 'fill', 'brass', 'bedroom', 'big', 'up', 'south', 'chillout',
-            'trap', 'tambourine', 'dnb', 'indie', 'woodblock', 'indian', 'harmonica', 'fi', 'minimal', 'tom', 'orchestral',
-            'glitch', 'deep', 'afrobeat', 'shouts', 'shoegaze', 'cello', 'country', 'jersey', 'bass', 'drumstep', 'rave',
-            'disco', 'saxophone', 'eastern', 'afropop ', '808', 'jazz', 'sub', 'lo', 'fx', 'hip', 'pluggnb', 'vocoder', 
-            'dubstep', 'pop', 'r&b', 'drift', 'idm', 'bongo', 'wurlitzer', 'down', 'kpop', 'viola', 'hyperpop', 'uk',
-            'lo-fi', 'chiptune', 'amapiano', 'melody', 'woodwind', 'piano', 'perc', 'neo', 'techno', 'scream', 'folk', 
-            'bell', 'flute', 'dream', 'timbale', 'cumbia', 'bap', 'american', 'cinematic', 'female', 'acid', 'noise',
-            'breakbeat', 'hop', 'recording', 'soul', 'jungle', 'chillwave', 'sweep', 'game', 'whisper', 'phrase', 'hard',
-            'key', 'chord', 'rock', 'electric', 'pad', 'guitar', 'emo', 'post', 'cymbal', 'organ', 'vocal', 'salsa', 
-            'downtempo', 'ambient', 'african', 'snare', 'eurodance', 'cowbell', 'stab', 'rnb', 'male', 'boom', 'drill', 
-            'heavy', 'samba', 'kick', 'trip', 'wobble', 'clavinet', 'riff', 'garage', 'middle', 'tech', 'tropical', 
-            'gospel', 'funk', 'lead', 'dub', 'texture', 'room', 'classical', 'leftfield', 'latin', 'riser', 'experimental', 
-            'percussion', 'staccato', 'afrobeats', 'distorted', 'live', 'atmosphere', 'afro', 'electro', 'reggae', 'rhythm', 
-            'arp', 'tearout', 'edm', 'bossa', 'footwork', 'psytrance', 'asian', 'pulse', 'rage', 'phonk', 'word', 'speed', 
-            'trombone', 'sax', 'flamenco', 'conga', 'acoustic', 'reggaeton', 'hardstyle', 'break', 'punk', 'club', 'metal', 
-            'drum', 'dialogue', 'ensemble', 'djembe', 'string', 'house', 'jump', 'synth', 'nova', 'analog', 'progressive', 
-            'saw', 'fidget', 'industrial', 'pluck', 'groove', 'melodic', 'caribbean', 'dancehall', 'impact', 'violin', 
-            'french', 'shaker', 'trumpet', 'hat', 'spoken', 'future', 'dance', 'clean', 'field ', 'moombahton', 'reverse', 
-            'brazilian', 'synthwave', 'global', 'trance', 'legato', 'grand', 'phase', 'layer', 'analog', 'hi', 'hh', 'smooth',
-            'mute', 'tube', 'rim', 'kik', 'sn', 'snr', 'long', 'short', '8bit', 'art', 'huge', 'large', 'small', 'fuzz', 
-            'snap', 'vox', 'cymbol', 'crash', 'hit', 'punch', 'stin', 'color', 'dark', 'bright', 'hype', 'blue', 'sad', 'sick',
-            'amb', 'vibe', 'kk', 'cp', 'cym', 'sfx', 'gun', 'biu', 'epic', 'china', 'chinese', 'roll', 'slice', 'pattern', 'knock', 
-            'drive', 'over', 'choir'])
+            # 乐器类别
+            # 键盘乐器
+            "piano", "pianos", "electric", "organ", "organs", "harpsichord", "harpsichords", "clavinet", "clavinets",
+            "synthesizer", "synthesizers", "synth", "synths", "keyboard", "keyboards", "accordion", "accordions", 
+            "melodica", "melodicas", "rhodes", "wurlitzer", "celesta", "celestas", "keytar", "keytars",
+            # 弦乐器
+            "acoustic", "guitar", "guitars", "bass", "basses", "classical", "steel", 
+            "twelve", "string", "strings", "ukulele", "ukuleles", "uke", "ukes", "resonator", "resonators", "lap",
+            "nylon", "pedal", "pedals", "baritone", "baritones", "fretless", "violin", "violins", "viola", "violas", 
+            "cello", "cellos", "double", "harp", "harps", "fiddle", "fiddles", "bow", "bows", "bowed", "pizzicato",
+            # 打击乐器
+            "drum", "drums", "kit", "kits", "snare", "snares", "tom", "toms", "floor", "cymbal", "cymbals", 
+            "hi", "hat", "hats", "ride", "rides", "crash", "crashes", "splash", "splashes", "china",
+            "kick", "kicks", "percussion", "beat", "beats", "conga", "congas", "bongo", "bongos", "djembe", "djembes", 
+            "tambourine", "tambourines", "maracas", "cowbell", "cowbells", "triangle", "triangles", "xylophone", "xylophones", 
+            "vibraphone", "vibraphones", "glockenspiel", "glockenspiels", "timpani", "bell", "bells", "chime", "chimes", 
+            "woodblock", "woodblocks", "clap", "claps", "shaker", "shakers", "cabasa", "cabasas", "timbale", "timbales",
+            # 管乐器
+            "flute", "flutes", "piccolo", "piccolos", "clarinet", "clarinets", "saxophone", "saxophones", "sax", "saxes", 
+            "oboe", "oboes", "bassoon", "bassoons", "recorder", "recorders", "harmonica", "harmonicas", "pan", "pans", 
+            "pipe", "pipes", "ocarina", "ocarinas", "trumpet", "trumpets", "trombone", "trombones", "french", "horn", "horns", 
+            "tuba", "tubas", "cornet", "cornets", "flugelhorn", "flugelhorns", "bugle", "bugles", "euphonium", "euphoniums", 
+            "woodwind", "woodwinds", "brass",
+            # 电子乐器
+            "machine", "machines", "sampler", "samplers", "sequencer", "sequencers", "theremin", "theremins", "midi", 
+            "controller", "controllers", "turntable", "turntables", "modular", "groove", "workstation", "workstations",
+            "vocoder", "vocoders", "808", "analog", "digital",
+            # 民族乐器
+            "erhu", "pipa", "guzheng", "dizi", "suona", "yangqin",
+            "guqin", "liuqin", "ruan", "hulusi", "sheng", "sitar", "sitars",
+            "tabla", "koto", "kotos", "shamisen", "bagpipes", "banjo", "banjos", 
+            "mandolin", "mandolins", "bouzouki", "bouzoukis", "balalaika", "balalaikas", "kalimba", "kalimbas", "didgeridoo", "didgeridoos",
+            # 音乐风格
+            # 电子音乐
+            "electronic", "edm", "techno", "house", "trance", "dubstep",
+            "drum", "drums", "bass", "basses", "dnb", "trap", "dub", "ambient", "downtempo",
+            "chillout", "chillwave", "glitch", "glitches", "idm", "lo-fi", "chiptune",
+            "acid", "breakbeat", "breakbeats", "jungle", "jungles", "hardstyle", "psytrance",
+            "electro", "minimal", "deep", "tech", "progressive",
+            "eurodance", "leftfield", "experimental", "tearout",
+            "fidget", "industrial", "moombahton", "synthwave",
+            "retrowave", "vaporwave", "phonk", "hyperpop",
+            # 流行音乐
+            "pop", "rock", "indie", "alternative", "punk", "metal", "metals",
+            "hardcore", "emo", "screamo", "post", "math", "prog",
+            "jazz", "blues", "r&b", "soul", "funk", "disco",
+            "reggae", "dancehall", "hip", "hop", "rap", "grime",
+            "drill", "pluggnb", "amapiano", "afrobeat", "afropop",
+            "afrobeats", "bossa", "nova", "samba", "sambas", "cumbia", "salsa", 
+            "reggaeton", "flamenco", "gospel", "country", "folk",
+            "bluegrass", "americana",
+            # 世界音乐
+            "latin", "caribbean", "brazilian", "african", "indian", "indians",
+            "asian", "asians", "eastern", "oriental", "middle", "global", "world",
+            # 地区风格
+            "kpop", "jpop", "cpop", "uk", "american", "french",
+            "jersey", "south", "chinese", "japanese", "korean",
+            # 影视游戏音乐
+            "cinematic", "orchestral", "classical", "game", "games", "video", "videos",
+            "movie", "movies", "film", "films", "trailer", "trailers", "score", "scores", "soundtrack", "soundtracks",
+            # 声音效果和特性
+            "riser", "risers", "impact", "impacts", "sweep", "sweeps", "noise", "noises", "fx", "atmosphere", "atmospheres", 
+            "texture", "textures", "reverse", "stutter", "stutters", "granular", "distorted", 
+            "clean", "field", "fields", "recording", "recordings", "live", "vintage", "modern", 
+            "retro",
+            # 演奏技巧和音乐元素
+            "melody", "melodies", "harmony", "harmonies", "rhythm", "rhythms", "groove", "grooves", "chord", "chords", "arp", 
+            "arpeggio", "arpeggios", "riff", "riffs", "fill", "fills", "break", "breaks", "phrase", "phrases", "stab", "stabs", 
+            "pluck", "plucks", "lead", "leads", "pad", "pads", "bassline", "basslines", "vocal", "vocals", "choir", "choirs", 
+            "ensemble", "ensembles", "solo", "solos", "layer", "layers",
+            # 音色描述
+            "bright", "dark", "warm", "cold", "soft", "hard", "smooth", 
+            "rough", "punchy", "harsh", "crisp", "muddy", "fat", "thin", 
+            "rich", "full", "empty", "deep", "shallow", "wide", "narrow", 
+            "thick", "epic", "huge", "large", "small", "fuzz", "tube", "tubes",
+            "over", "drive", "drives",
+            # 演奏技法
+            "sustain", "sustains", "decay", "decays", "attack", "attacks", "release", "releases", "vibrato", "vibratos", "tremolo", "tremolos",
+            "legato", "staccato", "mute", "mutes", "harmonics", "slide", "slides", "bend", "bends",
+            # 人声类型
+            "voice", "voices", "male", "males", "female", "females", "spoken", "whisper", "whispers", "shout", "shouts", 
+            "scream", "screams", "dialogue", "dialogues",
+            # 鼓组元素
+            "sn", "sns", "snr", "snrs", "hh", "hhs", "cym", "cyms", "rim", "rims", "kik", "kiks",
+            # 合成器类型
+            "saw", "saws", "pulse", "pulses", "sine", "sines", "square", "squares", "wobble", "wobbles", "sub", "subs",
+            # 音乐特性
+            "fast", "slow", "up", "down", "big", "high", "low", "heavy", 
+            "light",
+            # 情感氛围
+            "happy", "sad", "angry", "calm", "tense", "emotional",
+            "mysterious", "magical", "dreamy", "ethereal", "space", "spaces",
+            "underwater", "forest", "forests", "urban", "industrial", "natural",
+            "mechanical", "organic", "synthetic", "futuristic", "ancient",
+            # 技术术语
+            "bpm", "db", "eq", "lfo", "vca", "vcf", "vco", "adsr",
+            "daw", "vst", "au", "aax", "osc", "oscs", "env", "envs", "comp", "comps", "limiter", "limiters", 
+            "gate", "gates", "sidechain", "sidechains", "wet", "dry", "mono", "stereo", "hq", 
+            "lq", "hd", "sd", "fi",
+            # 制作相关
+            "recorded", "sampled", "synthesized", "processed", "raw",
+            "effected", "filtered", "compressed", "limited", "saturated", 
+            "overdriven", "bitcrushed", "resampled",
+            # 特殊效果
+            "chopped", "sliced", "stretched", "pitched", "transposed", 
+            "harmonized", "stacked", "mixed", "blended", "isolated",
+            # 场景用途
+            "bedroom", "bedrooms", "rave", "raves", "festival", "festivals", "party", "parties", "dance", "dances", "chill", 
+            "study", "sleep", "focus", "workout", "workouts", "gym", "gyms",
+            # 音效
+            "sfx", "biu", "knock", "knocks", "hit", "hits", "snap", "snaps",
+            # 音频文件格式
+            "mp3", "wav", "mid", "midi", "aiff", "aif", "flac", "m4a", 
+            "wma", "ogg", "opus", "aac", "dsd", "mp4", "wavpack", "ape",
+            # 其他
+            "instrument", "instruments", "color", "colors", "hype", "blue", "sick", "amb", "vibe", "vibes", 
+            "kk", "cp", "roll", "rolls", "slice", "slices", "pattern", "patterns", "word", "words", "speed", "speeds", "rage",
+            "phase", "phases", "grand", "8bit", "art", "arts", "stin", "vox", "cymbol", "cymbols"
+        ])
 
         self.en_cut = spacy.blank("en")
         for word in self.all_chords | self.nice_tags:
@@ -214,10 +310,15 @@ class SoundScanner:
         is_shot = False
         if words & self.shot_words:
             is_shot = True
-        if is_shot:
+        is_one_shot = False
+        if len(words & self.one_shot_words) > 1:
+            is_one_shot = True
+        if is_one_shot:
             file_info["oneshot"] = "1"
         elif is_loop:
             file_info["oneshot"] = "0"
+        elif is_shot:
+            file_info["oneshot"] = "1"
         else:
             file_info["oneshot"] = ""
         

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, MapPin, Music, Zap, Key, Volume2, VolumeX, Download, Heart, RefreshCw } from 'lucide-react';
+import { Play, Pause, MapPin, Music, Zap, Key, Volume2, VolumeX, Download, Trash2, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { AudioFile, SearchParams, searchAudioFiles, getAvailableTags, getAudioStream, addToCollection } from '../api/client';
+import { AudioFile, SearchParams, searchCollectionFiles, getAvailableTags, getAudioStream, removeFromCollection } from '../api/client';
 import { requestManager } from '../lib/requestManager';
 import WaveSurfer from 'wavesurfer.js';
 
-interface AudioListProps {
+interface CollectionListProps {
   onFileSelect: (file: AudioFile) => void;
   selectedFile?: AudioFile;
   onLocateFile: (filePath: string) => void;
@@ -13,20 +13,16 @@ interface AudioListProps {
   onStopPlaybackRef?: (stopFn: (() => void) | null) => void;
   isFileBrowserOpen?: boolean;
   isCollectionOpen?: boolean;
-  mouseInFileBrowser?: boolean;
-  mouseInCollection?: boolean;
 }
 
-const AudioList: React.FC<AudioListProps> = ({
+const CollectionList: React.FC<CollectionListProps> = ({
   onFileSelect,
   selectedFile,
   onLocateFile,
   onPlayFile,
   onStopPlaybackRef,
   isFileBrowserOpen = false,
-  isCollectionOpen = false,
-  mouseInFileBrowser = false,
-  mouseInCollection = false
+  isCollectionOpen = false
 }) => {
   const [files, setFiles] = useState<AudioFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,8 +70,8 @@ const AudioList: React.FC<AudioListProps> = ({
   // 批量下载功能
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
-  // 收藏功能状态
-  const [favoritingFiles, setFavoritingFiles] = useState<Set<string>>(new Set());
+  // 删除功能状态
+  const [removingFiles, setRemovingFiles] = useState<Set<string>>(new Set());
   const [successfulFiles, setSuccessfulFiles] = useState<Set<string>>(new Set());
   
   // 重新加载状态
@@ -87,7 +83,26 @@ const AudioList: React.FC<AudioListProps> = ({
   // 监听请求状态
   useEffect(() => {
     const updateRequestStatus = () => {
-      setRequestStatus(requestManager.getQueueStatus());
+      const status = requestManager.getQueueStatus();
+      setRequestStatus(status);
+      
+      // 更新App.tsx中的请求状态显示
+      const statusElement = document.getElementById('collection-request-status');
+      if (statusElement) {
+        if (status.isProcessing) {
+          statusElement.innerHTML = `
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>请求队列: ${status.queueLength}</span>
+            </div>
+          `;
+        } else {
+          statusElement.innerHTML = '';
+        }
+      }
     };
     
     // 初始状态
@@ -136,6 +151,32 @@ const AudioList: React.FC<AudioListProps> = ({
     searchFiles(reset);
     prevSearchKeyRef.current = currentKey;
   }, [selectedTags, searchParams.oneshot, searchParams.key, searchParams.op, isRandom, searchParams.limit, searchParams._refresh]);
+
+  // 监听isCollectionOpen变化，当收藏夹打开时刷新数据
+  useEffect(() => {
+    if (isCollectionOpen) {
+      // 重置搜索参数
+      setSearchParams({
+        tags: [],
+        page: 1,
+        pageSize: 20
+      });
+      // 重新搜索
+      searchFiles(true);
+    }
+  }, [isCollectionOpen]);
+
+  // 监听重新加载事件
+  useEffect(() => {
+    const handleReloadEvent = () => {
+      handleReload();
+    };
+    
+    window.addEventListener('reloadCollection', handleReloadEvent);
+    return () => {
+      window.removeEventListener('reloadCollection', handleReloadEvent);
+    };
+  }, []);
 
   // 当筛选条件变化时，停止上一状态下的所有播放
   useEffect(() => {
@@ -196,7 +237,7 @@ const AudioList: React.FC<AudioListProps> = ({
         limit: searchParams.limit || 50
       };
       
-      const results = await searchAudioFiles(params);
+      const results = await searchCollectionFiles(params);
       
       if (reset) {
         setFiles(results);
@@ -225,7 +266,7 @@ const AudioList: React.FC<AudioListProps> = ({
           limit: searchParams.limit || 50
         };
         
-        const results = await searchAudioFiles(params);
+        const results = await searchCollectionFiles(params);
         
         // 追加新结果到现有列表
         setFiles(prev => [...prev, ...results]);
@@ -376,7 +417,7 @@ const AudioList: React.FC<AudioListProps> = ({
     setPlayingFile(null);
     setVolumes(new Map());
     setMutedFiles(new Set());
-    setFavoritingFiles(new Set());
+    setRemovingFiles(new Set());
     setSuccessfulFiles(new Set());
     setSelectedFiles(new Set());
     setLoadingWaveforms(new Set());
@@ -411,15 +452,18 @@ const AudioList: React.FC<AudioListProps> = ({
     }, 100);
   };
 
-  // 添加到收藏夹
-  const handleAddToCollection = async (file: AudioFile) => {
+  // 从收藏夹删除
+  const handleRemoveFromCollection = async (file: AudioFile) => {
     try {
-      setFavoritingFiles(prev => new Set(prev).add(file.uid));
-      await addToCollection(file.rel_path);
+      setRemovingFiles(prev => new Set(prev).add(file.uid));
+      await removeFromCollection(file.rel_path);
       
       // 添加成功反馈
       setSuccessfulFiles(prev => new Set(prev).add(file.uid));
-      console.log(`已添加到收藏夹: ${file.name}`);
+      console.log(`已从收藏夹删除: ${file.name}`);
+      
+      // 从UI中移除该文件
+      setFiles(prev => prev.filter(f => f.uid !== file.uid));
       
       // 2秒后移除成功状态
       setTimeout(() => {
@@ -431,10 +475,10 @@ const AudioList: React.FC<AudioListProps> = ({
       }, 2000);
       
     } catch (error) {
-      console.error('添加到收藏夹失败:', error);
+      console.error('从收藏夹删除失败:', error);
       // 可以在这里添加错误提示
     } finally {
-      setFavoritingFiles(prev => {
+      setRemovingFiles(prev => {
         const newSet = new Set(prev);
         newSet.delete(file.uid);
         return newSet;
@@ -904,39 +948,10 @@ const AudioList: React.FC<AudioListProps> = ({
   }, []);
 
   return (
-    <div className={cn(
-      "flex-1 flex flex-col bg-background",
-      (isFileBrowserOpen || isCollectionOpen) && "overflow-hidden"
-    )}>
+    <div className={`flex-1 flex flex-col bg-background ${isFileBrowserOpen ? 'overflow-hidden' : ''}`}>
       {/* 筛选器 */}
       <div className="p-4 border-b border-border">
-        {/* 标题和重新加载按钮 */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">音频列表</h2>
-            {requestStatus.isProcessing && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>请求队列: {requestStatus.queueLength}</span>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleReload}
-            disabled={isReloading || requestStatus.isProcessing}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-              "bg-primary text-primary-foreground hover:bg-primary/90",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
-            )}
-            title="重新加载"
-          >
-            <RefreshCw className={cn("w-4 h-4", isReloading && "animate-spin")} />
-            {isReloading ? "重新加载中..." : "重新加载"}
-          </button>
-        </div>
-        
-        <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+          <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
             {/* 标签筛选 */}
             <div>
               <label className="text-sm font-medium mb-2 block">标签</label>
@@ -1524,23 +1539,23 @@ const AudioList: React.FC<AudioListProps> = ({
                       <MapPin className="w-4 h-4" />
                     </button>
 
-                      {/* 收藏按钮 */}
+                      {/* 删除按钮 */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleAddToCollection(file);
+                          handleRemoveFromCollection(file);
                         }}
                         className={cn(
                           "p-2 hover:bg-accent rounded transition-colors",
                           successfulFiles.has(file.uid) && "bg-red-500 text-white hover:bg-red-600"
                         )}
-                        title={successfulFiles.has(file.uid) ? "收藏成功！" : "添加到收藏夹"}
-                        disabled={favoritingFiles.has(file.uid)}
+                        title={successfulFiles.has(file.uid) ? "删除成功！" : "从收藏夹删除"}
+                        disabled={removingFiles.has(file.uid)}
                       >
-                        {favoritingFiles.has(file.uid) ? (
+                        {removingFiles.has(file.uid) ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                         ) : (
-                          <Heart className={cn(
+                          <Trash2 className={cn(
                             "w-4 h-4",
                             successfulFiles.has(file.uid) && "text-white"
                           )} />
@@ -1636,4 +1651,4 @@ const AudioList: React.FC<AudioListProps> = ({
   );
 };
 
-export default AudioList;
+export default CollectionList;

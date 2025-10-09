@@ -10,8 +10,8 @@ interface FileBrowserProps {
   onFileSelect: (file: FileBrowserItem) => void;
   selectedFilePath?: string;
   isLocateOperation?: boolean;
-  width?: number; // px
-  onWidthChange?: (w: number) => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 const FileBrowser: React.FC<FileBrowserProps> = ({
@@ -20,8 +20,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   onFileSelect,
   selectedFilePath,
   isLocateOperation = false,
-  width,
-  onWidthChange,
+  onMouseEnter,
+  onMouseLeave
 }) => {
   const [items, setItems] = useState<FileBrowserItem[]>([]);
   // 持久化展开状态的key
@@ -172,7 +172,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   };
 
   const [loading, setLoading] = useState(false);
-  const [localWidth, setLocalWidth] = useState<number>(360);
   
   // Audio player state
   const [selectedFile, setSelectedFile] = useState<FileBrowserItem | null>(null);
@@ -190,28 +189,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   
   // 拖拽相关状态
   const [draggedItem, setDraggedItem] = useState<FileBrowserItem | null>(null);
+
+  // 检查是否为MIDI文件
+  const isMidiFile = (fileName: string) => {
+    return fileName.toLowerCase().match(/\.(mid|midi)$/i);
+  };
   
 
-  // 初始化默认宽度为 1/2 屏宽
-  useEffect(() => {
-    if (width == null) {
-      try {
-        const w = Math.max(280, Math.min(window.innerWidth * 0.5, window.innerWidth * 0.8));
-        setLocalWidth(Math.round(w));
-      } catch {}
-    }
-  }, [width]);
 
   // 保存展开状态到localStorage
   useEffect(() => {
     saveExpandedPaths(expandedPaths);
   }, [expandedPaths]);
 
-  // 将宽度同步到 CSS 变量，供外部使用（如底部播放器）
-  useEffect(() => {
-    const w = (width ?? localWidth);
-    try { document.documentElement.style.setProperty('--fb-width', `${w}px`); } catch {}
-  }, [width, localWidth]);
 
   // 加载根目录内容
   useEffect(() => {
@@ -514,6 +504,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
       return;
     }
     
+    // MIDI文件不支持播放
+    if (isMidiFile(file.name)) {
+      setIsFileSwitching(false);
+      return;
+    }
+    
     try {
       setIsLoadingAudio(true);
       
@@ -637,7 +633,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
 
   const handlePlayPause = () => {
     console.log('FileBrowser: handlePlayPause called, isPlaying:', isPlaying, 'waveform:', !!waveform);
-    if (waveform && selectedFile && selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i)) {
+    if (waveform && selectedFile && selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) && !isMidiFile(selectedFile.name)) {
       if (isPlaying) {
         console.log('FileBrowser: Pausing audio');
         waveform.pause();
@@ -651,6 +647,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   };
 
   const handleVolumeChange = (newVolume: number) => {
+    if (selectedFile && isMidiFile(selectedFile.name)) return;
     setVolume(newVolume);
     if (waveform) {
       waveform.setVolume(isMuted ? 0 : newVolume);
@@ -658,6 +655,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   };
 
   const handleMuteToggle = () => {
+    if (selectedFile && isMidiFile(selectedFile.name)) return;
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     if (waveform) {
@@ -829,7 +827,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
           ) : (
             <>
               <div className="w-4 h-4 mr-1 flex-shrink-0" />
-              {item.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) ? (
+              {isMidiFile(item.name) ? (
+                <span className="text-lg mr-2 flex-shrink-0">🎵</span>
+              ) : item.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) ? (
                 <Music className="w-4 h-4 mr-2 flex-shrink-0 text-green-500" />
               ) : (
                 <File className="w-4 h-4 mr-2 flex-shrink-0 text-gray-500" />
@@ -865,7 +865,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
         "transform transition-transform duration-300 ease-in-out",
         isOpen ? "translate-x-0" : "-translate-x-full"
         )}
-        style={{ width: (width ?? localWidth) }}
+        style={{ width: '50vw' }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
       >
         {/* 头部 */}
         <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
@@ -889,57 +891,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
               {items.map(item => renderItem(item))}
             </div>
           )}
-          {/* 拖拽调节宽度句柄 */}
-          <div
-            className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors group"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              const startX = e.clientX;
-              const startW = (width ?? localWidth);
-              
-              // 添加拖拽时的视觉反馈
-              document.body.style.cursor = 'col-resize';
-              document.body.style.userSelect = 'none';
-              
-              const onMove = (ev: MouseEvent) => {
-                ev.preventDefault();
-                const dx = ev.clientX - startX;
-                let next = startW + dx;
-                // 设置最小宽度280px，最大宽度为屏幕宽度的90%
-                next = Math.max(280, Math.min(next, window.innerWidth * 0.9));
-                
-                if (onWidthChange) {
-                  onWidthChange(Math.round(next));
-                } else {
-                  setLocalWidth(Math.round(next));
-                }
-              };
-              
-              const onUp = () => {
-                // 恢复默认样式
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-                
-                window.removeEventListener('mousemove', onMove);
-                window.removeEventListener('mouseup', onUp);
-              };
-              
-              window.addEventListener('mousemove', onMove);
-              window.addEventListener('mouseup', onUp);
-            }}
-          />
         </div>
 
         {/* 音频播放器 - 固定在抽屉底部，始终显示 */}
         <div className="border-t border-border bg-card p-3 flex-shrink-0">
           <div className="space-y-3">
             {/* 文件名和路径 */}
-            {selectedFile && selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) ? (
+            {selectedFile ? (
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Music className="w-4 h-4 text-primary flex-shrink-0" />
+                  {isMidiFile(selectedFile.name) ? (
+                    <span className="text-lg flex-shrink-0">🎵</span>
+                  ) : selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) ? (
+                    <Music className="w-4 h-4 text-primary flex-shrink-0" />
+                  ) : (
+                    <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  )}
                   <span className="text-sm font-medium truncate" title={selectedFile.name}>
                     {selectedFile.name}
                   </span>
@@ -957,7 +924,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
 
             {/* 波形图 */}
             <div className="h-16 bg-muted/30 border border-border rounded-lg overflow-hidden relative">
-              {selectedFile && selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) ? (
+              {selectedFile && isMidiFile(selectedFile.name) ? (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                  <div className="text-center">
+                    <div className="text-lg mb-1">🎵</div>
+                    <div className="text-xs">MIDI文件不支持播放</div>
+                  </div>
+                </div>
+              ) : selectedFile && selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) ? (
                 <>
                   <div ref={waveformRef} className="w-full h-full" />
                   {(isLoadingAudio || isFileSwitching) && (
@@ -986,9 +960,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
               {/* 播放/暂停按钮 */}
               <button
                 onClick={handlePlayPause}
-                disabled={isLoadingAudio || !selectedFile || !selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i)}
-                className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title={`isPlaying: ${isPlaying}, waveform: ${!!waveform}`}
+                disabled={isLoadingAudio || !selectedFile || !selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) || (selectedFile && isMidiFile(selectedFile.name))}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  (selectedFile && isMidiFile(selectedFile.name))
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+                title={selectedFile && isMidiFile(selectedFile.name) ? "MIDI文件不支持播放" : `isPlaying: ${isPlaying}, waveform: ${!!waveform}`}
               >
                 {(() => {
                   console.log('FileBrowser: Button render - isPlaying:', isPlaying);
@@ -1005,6 +984,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                 <button
                   onClick={handleMuteToggle}
                   className="p-1 hover:bg-accent rounded transition-colors"
+                  disabled={selectedFile && isMidiFile(selectedFile.name)}
+                  title={selectedFile && isMidiFile(selectedFile.name) ? "MIDI文件不支持音量控制" : (isMuted ? "取消静音" : "静音")}
                 >
                   {isMuted ? (
                     <VolumeX className="w-4 h-4" />
@@ -1023,6 +1004,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                   style={{
                     background: `linear-gradient(to right, #4f46e5 0%, #4f46e5 ${(isMuted ? 0 : volume) * 100}%, #e5e7eb ${(isMuted ? 0 : volume) * 100}%, #e5e7eb 100%)`
                   }}
+                  disabled={selectedFile && isMidiFile(selectedFile.name)}
+                  title={selectedFile && isMidiFile(selectedFile.name) ? "MIDI文件不支持音量控制" : "音量"}
                 />
                 <span className="text-xs text-muted-foreground w-8">
                   {Math.round((isMuted ? 0 : volume) * 100)}%
