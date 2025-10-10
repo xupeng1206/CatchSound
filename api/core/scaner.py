@@ -311,7 +311,7 @@ class SoundScanner:
         if words & self.shot_words:
             is_shot = True
         is_one_shot = False
-        if len(words & self.one_shot_words) > 1:
+        if len(words & self.shot_words) > 1:
             is_one_shot = True
         if is_one_shot:
             file_info["oneshot"] = "1"
