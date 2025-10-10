@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, ChevronDown, Folder, File, Music, Play, Pause, Volume2, VolumeX, Download } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, File, Music, Play, Pause, Volume2, VolumeX, Download, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { FileBrowserItem, getFolderContents, getFileBranch, getAudioStream } from '../api/client';
+import { FileBrowserItem, getFolderContents, getFileBranch, getAudioStream, addToCollection } from '../api/client';
 import WaveSurfer from 'wavesurfer.js';
 
 interface FileBrowserProps {
@@ -189,6 +189,41 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
   
   // 拖拽相关状态
   const [draggedItem, setDraggedItem] = useState<FileBrowserItem | null>(null);
+  
+  // 收藏功能状态
+  const [favoritingFiles, setFavoritingFiles] = useState<Set<string>>(new Set());
+  const [successfulFiles, setSuccessfulFiles] = useState<Set<string>>(new Set());
+
+  // 添加到收藏夹
+  const handleAddToCollection = async (file: FileBrowserItem) => {
+    try {
+      setFavoritingFiles(prev => new Set(prev).add(file.path));
+      await addToCollection(file.path);
+      
+      // 添加成功反馈
+      setSuccessfulFiles(prev => new Set(prev).add(file.path));
+      console.log(`已添加到收藏夹: ${file.name}`);
+      
+      // 2秒后移除成功状态
+      setTimeout(() => {
+        setSuccessfulFiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(file.path);
+          return newSet;
+        });
+      }, 2000);
+      
+    } catch (error) {
+      console.error('添加到收藏夹失败:', error);
+      // 可以在这里添加错误提示
+    } finally {
+      setFavoritingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.path);
+        return newSet;
+      });
+    }
+  };
 
   // 检查是否为MIDI文件
   const isMidiFile = (fileName: string) => {
@@ -1020,6 +1055,28 @@ const FileBrowser: React.FC<FileBrowserProps> = ({
                   title="下载文件"
                 >
                   <Download className="w-4 h-4" />
+                </button>
+              )}
+              
+              {/* 收藏按钮 */}
+              {selectedFile && selectedFile.name.match(/\.(mp3|wav|flac|aiff|m4a|ogg)$/i) && (
+                <button
+                  onClick={() => handleAddToCollection(selectedFile)}
+                  className={cn(
+                    "p-2 hover:bg-accent rounded transition-colors",
+                    successfulFiles.has(selectedFile.path) && "bg-red-500 text-white hover:bg-red-600"
+                  )}
+                  title={successfulFiles.has(selectedFile.path) ? "收藏成功！" : "添加到收藏夹"}
+                  disabled={favoritingFiles.has(selectedFile.path)}
+                >
+                  {favoritingFiles.has(selectedFile.path) ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  ) : (
+                    <Heart className={cn(
+                      "w-4 h-4",
+                      successfulFiles.has(selectedFile.path) && "text-white"
+                    )} />
+                  )}
                 </button>
               )}
             </div>

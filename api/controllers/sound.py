@@ -2,7 +2,7 @@ import hashlib
 from flask_restx import Resource
 from extensions.ext_restx import api
 from flask import request
-from extensions.ext_db_sound import db_sound
+from extensions.ext_duck import db_sound
 
 
 @api.route("/sounds")

@@ -2,7 +2,7 @@ import click
 import os
 from config import DATA_DIR, OPENDAL_FS_ROOT
 from core.scaner import sound_scanner
-from extensions.ext_db_sound import db_sound
+from extensions.ext_duck import db_sound
 
 
 @click.command("clean_sound", help="clean sound db")

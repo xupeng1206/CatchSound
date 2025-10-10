@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, MapPin, Music, Zap, Key, Volume2, VolumeX, Download, Heart, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AudioFile, SearchParams, searchAudioFiles, getAvailableTags, getAudioStream, addToCollection } from '../api/client';
-import { requestManager } from '../lib/requestManager';
 import WaveSurfer from 'wavesurfer.js';
 
 interface AudioListProps {
@@ -80,24 +79,6 @@ const AudioList: React.FC<AudioListProps> = ({
   
   // 重新加载状态
   const [isReloading, setIsReloading] = useState(false);
-  
-  // 请求状态
-  const [requestStatus, setRequestStatus] = useState({ queueLength: 0, isProcessing: false });
-
-  // 监听请求状态
-  useEffect(() => {
-    const updateRequestStatus = () => {
-      setRequestStatus(requestManager.getQueueStatus());
-    };
-    
-    // 初始状态
-    updateRequestStatus();
-    
-    // 定期更新状态
-    const interval = setInterval(updateRequestStatus, 500);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   // 全局拖拽检测
   useEffect(() => {
@@ -912,18 +893,10 @@ const AudioList: React.FC<AudioListProps> = ({
       <div className="p-4 border-b border-border">
         {/* 标题和重新加载按钮 */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">音频列表</h2>
-            {requestStatus.isProcessing && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>请求队列: {requestStatus.queueLength}</span>
-              </div>
-            )}
-          </div>
+          <h2 className="text-lg font-semibold">音频列表</h2>
           <button
             onClick={handleReload}
-            disabled={isReloading || requestStatus.isProcessing}
+            disabled={isReloading}
             className={cn(
               "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
               "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -1577,7 +1550,7 @@ const AudioList: React.FC<AudioListProps> = ({
                           handleVolumeChange(file, parseFloat(e.target.value));
                         }}
                         onClick={(e) => e.stopPropagation()}
-                        className="volume-slider w-20"
+                        className="volume-slider w-24"
                         style={{
                           '--volume-percent': `${(mutedFiles.has(file.uid) ? 0 : (volumes.get(file.uid) || 1.0)) * 100}%`
                         } as React.CSSProperties}

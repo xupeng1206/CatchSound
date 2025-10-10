@@ -4,7 +4,7 @@ from flask_restx import Resource
 from flask import request, Response
 from extensions.ext_opendal import storage
 from extensions.ext_restx import api
-from extensions.ext_db_sound import db_sound
+from extensions.ext_duck import db_sound
 
 
 @api.route("/file")

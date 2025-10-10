@@ -155,12 +155,7 @@ function App() {
         >
           {/* 头部 */}
           <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-sidebar-foreground">收藏夹</h2>
-              <div id="collection-request-status" className="flex items-center gap-2 text-sm text-muted-foreground">
-                {/* 请求状态将通过CollectionList组件更新 */}
-              </div>
-            </div>
+            <h2 className="text-lg font-semibold text-sidebar-foreground">收藏夹</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {

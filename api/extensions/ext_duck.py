@@ -1,59 +1,62 @@
 import os
 import duckdb
 import pandas as pd
+from threading import Lock
 from config import DATA_DIR
 
 
-class CollectionDB:
+class DuckDBWALManager:
+    
+    def __init__(self, db_name):
+        self.db_path = os.path.join(DATA_DIR, db_name)
+    
     def init_app(self, app):
-        self.conn = duckdb.connect(os.path.join(DATA_DIR, "collection.duck"))
+        self.conn = duckdb.connect(self.db_path)
+        self.write_lock = Lock()
         self.setup_database()
 
     def setup_database(self):
         """初始化数据库结构"""
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS sound_index (
-                uid VARCHAR PRIMARY KEY,
-                abs_path VARCHAR,
-                rel_path VARCHAR,
-                name VARCHAR,
-                ext VARCHAR,
-                size VARCHAR,
-                duration VARCHAR,
-                channels VARCHAR,
-                bitrate VARCHAR,
-                bitdepth VARCHAR,
-                samplerate VARCHAR,
-                bpm VARCHAR,
-                year VARCHAR,
-                key VARCHAR,
-                oneshot VARCHAR,
-                tags TEXT[],
-            )
-        """)
+        with self.write_lock:
+            self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS sound_index (
+                    uid VARCHAR PRIMARY KEY,
+                    abs_path VARCHAR,
+                    rel_path VARCHAR,
+                    name VARCHAR,
+                    ext VARCHAR,
+                    size VARCHAR,
+                    duration VARCHAR,
+                    channels VARCHAR,
+                    bitrate VARCHAR,
+                    bitdepth VARCHAR,
+                    samplerate VARCHAR,
+                    bpm VARCHAR,
+                    year VARCHAR,
+                    key VARCHAR,
+                    oneshot VARCHAR,
+                    tags TEXT[],
+                )
+            """)
 
-        # 创建索引
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_uid ON sound_index(uid)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_abs_path ON sound_index(abs_path)")
+            # 创建索引
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_uid ON sound_index(uid)")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_abs_path ON sound_index(abs_path)")
 
     def batch_insert(self, rows):
-        """批量插入数据"""
         df = pd.DataFrame(rows)
         try:
-            self.conn.execute("SET preserve_insertion_order = false")
-            self.conn.execute("SET checkpoint_threshold = '1GB'")
-            self.conn.execute("SET threads = 8")
-            self.conn.execute("INSERT INTO sound_index SELECT \
-                              uid, abs_path, rel_path, name, ext, size, duration, channels, bitrate, bitdepth, \
-                              samplerate, bpm, year, key, oneshot, tags \
-                              FROM df ON CONFLICT (uid) DO NOTHING")
+            with self.write_lock:
+                self.conn.execute("SET preserve_insertion_order = false")
+                self.conn.execute("SET checkpoint_threshold = '1GB'")
+                self.conn.execute("SET threads = 8")
+                self.conn.execute("INSERT INTO sound_index SELECT \
+                                uid, abs_path, rel_path, name, ext, size, duration, channels, bitrate, bitdepth, \
+                                samplerate, bpm, year, key, oneshot, tags \
+                                FROM df ON CONFLICT (uid) DO NOTHING")
         except Exception as e:
             print(f"❌ 批量插入失败: {e}")
-
-    def del_by_uid(self, uid):
-        self.conn.execute(f"DELETE FROM sound_index WHERE uid='{uid}'")
-        
-        
+            
     def get_sound_by_or_tags(self, tags, oneshot, key, limit, offset, rand):
         tags_stc = ""
         for tag in tags:
@@ -75,9 +78,8 @@ class CollectionDB:
         order_stc = "abs_path"
         if rand:
             order_stc = "RANDOM()"
-            
+
         if where_stc:
-        
             result = self.conn.execute(
                 f"SELECT uid, abs_path, rel_path, name, ext, size, duration, channels, bitrate, bitdepth, \
                 samplerate, bpm, year, key, oneshot, tags FROM sound_index WHERE {where_stc} \
@@ -121,9 +123,8 @@ class CollectionDB:
         order_stc = "abs_path"
         if rand:
             order_stc = "RANDOM()"
-            
+        
         if where_stc:
-            print(where_stc)
             result = self.conn.execute(
                 f"SELECT uid, abs_path, rel_path, name, ext, size, duration, channels, bitrate, bitdepth, \
                 samplerate, bpm, year, key, oneshot, tags FROM sound_index WHERE {where_stc} \
@@ -160,6 +161,11 @@ class CollectionDB:
                 "uid", "abs_path", "rel_path", "name", "ext", "size", "duration", "channels", 
                 "bitrate", "bitdepth", "samplerate", "bpm", "year", "key", "oneshot", "tags"], row)))
         return final_result
+        
+    def del_by_uid(self, uid):
+        with self.write_lock:
+            self.conn.execute(f"DELETE FROM sound_index WHERE uid='{uid}'")
 
 
-db_collection = CollectionDB()
+db_sound = DuckDBWALManager("sound.duck")
+db_collection = DuckDBWALManager("collection.duck")

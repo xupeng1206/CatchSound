@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, MapPin, Music, Zap, Key, Volume2, VolumeX, Download, Trash2, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AudioFile, SearchParams, searchCollectionFiles, getAvailableTags, getAudioStream, removeFromCollection } from '../api/client';
-import { requestManager } from '../lib/requestManager';
 import WaveSurfer from 'wavesurfer.js';
 
 interface CollectionListProps {
@@ -76,43 +75,6 @@ const CollectionList: React.FC<CollectionListProps> = ({
   
   // 重新加载状态
   const [isReloading, setIsReloading] = useState(false);
-  
-  // 请求状态
-  const [requestStatus, setRequestStatus] = useState({ queueLength: 0, isProcessing: false });
-
-  // 监听请求状态
-  useEffect(() => {
-    const updateRequestStatus = () => {
-      const status = requestManager.getQueueStatus();
-      setRequestStatus(status);
-      
-      // 更新App.tsx中的请求状态显示
-      const statusElement = document.getElementById('collection-request-status');
-      if (statusElement) {
-        if (status.isProcessing) {
-          statusElement.innerHTML = `
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>请求队列: ${status.queueLength}</span>
-            </div>
-          `;
-        } else {
-          statusElement.innerHTML = '';
-        }
-      }
-    };
-    
-    // 初始状态
-    updateRequestStatus();
-    
-    // 定期更新状态
-    const interval = setInterval(updateRequestStatus, 500);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   // 全局拖拽检测
   useEffect(() => {
@@ -1592,7 +1554,7 @@ const CollectionList: React.FC<CollectionListProps> = ({
                           handleVolumeChange(file, parseFloat(e.target.value));
                         }}
                         onClick={(e) => e.stopPropagation()}
-                        className="volume-slider w-20"
+                        className="volume-slider w-24"
                         style={{
                           '--volume-percent': `${(mutedFiles.has(file.uid) ? 0 : (volumes.get(file.uid) || 1.0)) * 100}%`
                         } as React.CSSProperties}
