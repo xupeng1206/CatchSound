@@ -242,6 +242,7 @@ class SoundScanner:
         
     
     def _process_single_file(self, file_path: Path, root_path: Path):
+        print(f"✅ 文件路径: {str(file_path)}")
         file_info = self._fetch_static_info(file_path, root_path)
         file_info, tags = self._fetch_info_by_cut(file_path, root_path, file_info)
         
@@ -249,7 +250,7 @@ class SoundScanner:
         for k in self.info_required:
             infos[k] = file_info.get(k, "")
         infos["tags"] = tags
-        print(f"✅ 文件路径: {str(file_path)}")
+        print(f"🎉  文件路径: {str(file_path)}")
         return infos
     
     def _fetch_static_info(self, file_path: Path, root_path: Path):
