@@ -1,7 +1,7 @@
 import os
 import duckdb
 import pandas as pd
-from threading import Lock
+from readerwriterlock import rwlock
 from config import DATA_DIR
 
 
@@ -12,12 +12,12 @@ class DuckDBWALManager:
     
     def init_app(self, app):
         self.conn = duckdb.connect(self.db_path)
-        self.write_lock = Lock()
+        self.rwlock =  rwlock.RWLockWrite()
         self.setup_database()
 
     def setup_database(self):
         """初始化数据库结构"""
-        with self.write_lock:
+        with self.rwlock.gen_wlock():
             self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS sound_index (
                     uid VARCHAR PRIMARY KEY,
@@ -46,7 +46,7 @@ class DuckDBWALManager:
     def batch_insert(self, rows):
         df = pd.DataFrame(rows)
         try:
-            with self.write_lock:
+            with self.rwlock.gen_wlock():
                 self.conn.execute("SET preserve_insertion_order = false")
                 self.conn.execute("SET checkpoint_threshold = '1GB'")
                 self.conn.execute("SET threads = 8")
@@ -161,9 +161,9 @@ class DuckDBWALManager:
                 "uid", "abs_path", "rel_path", "name", "ext", "size", "duration", "channels", 
                 "bitrate", "bitdepth", "samplerate", "bpm", "year", "key", "oneshot", "tags"], row)))
         return final_result
-        
+
     def del_by_uid(self, uid):
-        with self.write_lock:
+        with self.rwlock.gen_wlock():
             self.conn.execute(f"DELETE FROM sound_index WHERE uid='{uid}'")
 
 
